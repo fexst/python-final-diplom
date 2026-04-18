@@ -1,0 +1,4 @@
+# Keep the sample import file, ignore other local data artifacts.
+*
+!.gitignore
+!shop1.yaml

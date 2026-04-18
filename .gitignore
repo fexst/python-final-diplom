@@ -117,3 +117,24 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+
+# Local editor / OS clutter
+.vscode/
+.codex/
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+*.tmp
+*.bak
+
+# SQLite runtime files
+*.sqlite3-journal
+*.sqlite3-shm
+*.sqlite3-wal
+
+# Python tool caches
+.ruff_cache/
+.nox/
+.pyre/
