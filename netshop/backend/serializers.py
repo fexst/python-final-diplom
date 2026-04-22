@@ -126,3 +126,32 @@ class OrderListSerializer(serializers.ModelSerializer):
             for item in obj.ordered_items.all()
         )
         
+class SupplierOrderItemSerializer(serializers.ModelSerializer):
+    product = serializers.CharField(source='product_info.product.name')
+    shop = serializers.CharField(source='product_info.shop.name')
+    price = serializers.IntegerField(source='product_info.price')
+
+    class Meta:
+        model = OrderItem
+        fields = ('id', 'product', 'shop', 'price', 'quantity')
+
+
+class SupplierOrderSerializer(serializers.ModelSerializer):
+    items = serializers.SerializerMethodField()
+    total_sum = serializers.SerializerMethodField()
+    user = serializers.CharField(source='user.email')
+
+    class Meta:
+        model = Order
+        fields = ('id', 'dt', 'state', 'user', 'items', 'total_sum')
+
+    def get_items(self, obj):
+        shop = self.context['shop']
+        items = obj.ordered_items.filter(product_info__shop=shop)
+        return SupplierOrderItemSerializer(items, many=True).data
+
+    def get_total_sum(self, obj):
+        shop = self.context['shop']
+        items = obj.ordered_items.filter(product_info__shop=shop)
+        return sum(item.quantity * item.product_info.price for item in items)
+    

@@ -10,17 +10,13 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
 from .serializers import (RegisterUserSerializer, LoginSerializer, ProductInfoSerializer, 
-                          OrderSerializer, ContactSerializer, OrderListSerializer)
+                          OrderSerializer, ContactSerializer, OrderListSerializer, SupplierOrderSerializer)
 
 from .models import Shop, Category, Product, ProductInfo, Parameter, ProductParameter, Order, OrderItem, Contact
 from django.db.models import Q
 from rest_framework.generics import ListAPIView
-
-
-
-
-
-
+from django.conf import settings
+from django.core.mail import send_mail
 
 
 class PartnerUpdate(APIView):
@@ -297,6 +293,55 @@ class OrderConfirmAPIView(APIView):
         order.state = 'new'
         order.save()
 
+        order_items = order.ordered_items.select_related(
+            'product_info__product',
+            'product_info__shop'
+        )
+
+        items_text = '\n'.join(
+            f"{item.product_info.product.name} | "
+            f"магазин: {item.product_info.shop.name} | "
+            f"цена: {item.product_info.price} | "
+            f"кол-во: {item.quantity}"
+            for item in order_items
+        )
+
+        total_sum = sum(item.quantity * item.product_info.price for item in order_items)
+
+        admin_subject = f'Новый заказ #{order.id}'
+        admin_message = (
+            f'Поступил новый заказ #{order.id}\n'
+            f'Пользователь: {request.user.email}\n'
+            f'Контакт: {contact}\n'
+            f'Состав заказа:\n{items_text}\n'
+            f'Итого: {total_sum}'
+        )
+
+        send_mail(
+            subject=admin_subject,
+            message=admin_message,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[settings.ADMIN_EMAIL],
+            fail_silently=False,
+        )
+
+        client_subject = f'Подтверждение заказа #{order.id}'
+        client_message = (
+            f'Здравствуйте, {request.user.first_name or request.user.email}!\n\n'
+            f'Ваш заказ #{order.id} успешно оформлен.\n'
+            f'Состав заказа:\n{items_text}\n'
+            f'Итого: {total_sum}\n\n'
+            f'Адрес доставки: {contact}'
+        )
+
+        send_mail(
+            subject=client_subject,
+            message=client_message,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[request.user.email],
+            fail_silently=False,
+        )
+
         return Response({'Status': True})
     
 
@@ -309,3 +354,54 @@ class OrderListAPIView(APIView):
         ).exclude(state='basket')
 
         return Response(OrderListSerializer(orders, many=True).data)
+
+class PartnerStateAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        if request.user.type != 'shop':
+            return Response({'error': 'Только для магазинов'}, status=403)
+
+        state = request.data.get('state')
+        if state is None:
+            return Response({'error': 'state is required'}, status=400)
+
+        if not isinstance(state, bool):
+            return Response({'error': 'state must be boolean'}, status=400)
+
+        shop = Shop.objects.filter(user=request.user).first()
+        if not shop:
+            return Response({'error': 'Shop not found'}, status=404)
+
+        shop.state = state
+        shop.save()
+
+        return Response({'Status': True, 'state': shop.state})
+    
+class PartnerOrdersAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        if request.user.type != 'shop':
+            return Response({'error': 'Только для магазинов'}, status=403)
+
+        shop = Shop.objects.filter(user=request.user).first()
+        if not shop:
+            return Response({'error': 'Shop not found'}, status=404)
+
+        orders = (
+            Order.objects.filter(
+                ordered_items__product_info__shop=shop
+            )
+            .exclude(state='basket')
+            .distinct()
+            .prefetch_related('ordered_items__product_info__product', 'ordered_items__product_info__shop')
+        )
+
+        serializer = SupplierOrderSerializer(
+            orders,
+            many=True,
+            context={'shop': shop}
+        )
+        return Response(serializer.data)
+    

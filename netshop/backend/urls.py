@@ -1,13 +1,16 @@
 from django.urls import path
 from .views import (PartnerUpdate, RegisterUserAPIView, LoginAPIView, ProductInfoListAPIView,  
                     BasketAPIView, BasketAddAPIView, BasketDeleteAPIView, ContactAPIView,
-                    ContactCreateAPIView, ContactDeleteAPIView, OrderConfirmAPIView, OrderListAPIView)
+                    ContactCreateAPIView, ContactDeleteAPIView, OrderConfirmAPIView, OrderListAPIView,
+                    PartnerStateAPIView, PartnerOrdersAPIView)
 
 
 urlpatterns = [
     path('user/register/', RegisterUserAPIView.as_view()),
     path('user/login/', LoginAPIView.as_view()),
     path('partner/update/', PartnerUpdate.as_view()),
+    path('partner/state/', PartnerStateAPIView.as_view()),
+    path('partner/orders/', PartnerOrdersAPIView.as_view()),
     path('products/', ProductInfoListAPIView.as_view()),
     path('basket/', BasketAPIView.as_view()),
     path('basket/add/', BasketAddAPIView.as_view()),
@@ -18,3 +21,4 @@ urlpatterns = [
     path('order/confirm/', OrderConfirmAPIView.as_view()),
     path('orders/', OrderListAPIView.as_view()),
 ]
+

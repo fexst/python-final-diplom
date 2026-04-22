@@ -38,8 +38,9 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
-    'backend.apps.BackendConfig',
     'rest_framework.authtoken',
+    'django_rest_passwordreset',
+    'backend.apps.BackendConfig',
 ]
 
 MIDDLEWARE = [
@@ -138,3 +139,6 @@ REST_FRAMEWORK = {
     ],
 }
 
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+DEFAULT_FROM_EMAIL = 'noreply@netshop.local'
+ADMIN_EMAIL = 'admin@example.com'
